@@ -1,0 +1,12 @@
+@TmsApi_HostAddress = http://localhost:5000
+
+GET {{TmsApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+# Test the assessment endpoint (should show JSON data - this is the security problem!)
+GET {{TmsApi_HostAddress}}/api/assessments/results
+Accept: application/json
+
+###
