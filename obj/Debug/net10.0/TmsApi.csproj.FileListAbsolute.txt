@@ -26,3 +26,4 @@
 /home/beshah/Documents/Projects/TmsApi/obj/Debug/net10.0/TmsApi.pdb
 /home/beshah/Documents/Projects/TmsApi/obj/Debug/net10.0/TmsApi.genruntimeconfig.cache
 /home/beshah/Documents/Projects/TmsApi/obj/Debug/net10.0/ref/TmsApi.dll
+/home/beshah/Documents/Projects/TmsApi/obj/Debug/net10.0/TmsApi.sourcelink.json
