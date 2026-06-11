@@ -3,11 +3,7 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
-
-builder.Services
-    .AddAuthentication("Training")
-    .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
-builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
 
 
 builder.Services.AddSingleton<EnrollmentWorker>();         
@@ -30,7 +26,8 @@ var app = builder.Build();
 
 
 app.UseMiddleware<RequestLoggingMiddleware>(); // FIRST - outer wrapper
-app.UseExceptionHandler("/Error");            // Exception handling
+app.UseExceptionHandler("/Error");  
+app.UseStatusCodePages();          // Exception handling
 app.UseHttpsRedirection();                    // HTTPS redirect
 app.UseRouting();                            // Routing
 app.UseAuthentication();                     // Authentication
@@ -45,10 +42,9 @@ app.MapGet("/api/assessments/results", () => Results.Ok(new
 })).RequireAuthorization();
 
 // EXERCISE 2: Test route to trigger the captive dependency
-app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
+app.MapGet("/api/error", () =>
 {
-    worker.ProcessBatch();
-    return Results.Ok("processed");
+    throw new Exception("Simulated database failure for ProblemDetails testing");
 });
 
 // EXERCISE 4: Test endpoints for logging
