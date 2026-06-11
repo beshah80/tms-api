@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
+builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<EnrollmentWorker>();         
@@ -23,6 +25,11 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();  // this creates /scalar/v1 endpoint
+}
 
 
 app.UseMiddleware<RequestLoggingMiddleware>(); // FIRST - outer wrapper
