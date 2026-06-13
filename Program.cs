@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using TmsApi.Middleware;
+using TmsApi.Models;
+using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -9,7 +12,7 @@ builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<EnrollmentWorker>();         
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>(); 
+builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>(); 
 
 
 builder.Services.AddOptions<PaymentOptions>()
@@ -25,16 +28,19 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 var app = builder.Build();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();  // this creates /scalar/v1 endpoint
+    app.MapScalarApiReference();
+}
+else
+{
+    app.UseExceptionHandler();  // Production: catches exceptions → ProblemDetails JSON
 }
 
-
-app.UseMiddleware<RequestLoggingMiddleware>(); // FIRST - outer wrapper
-app.UseExceptionHandler("/Error");  
-app.UseStatusCodePages();          // Exception handling
+app.UseMiddleware<RequestLoggingMiddleware>();  // must come after exception handler
+app.UseStatusCodePages();
 app.UseHttpsRedirection();                    // HTTPS redirect
 app.UseRouting();                            // Routing
 app.UseAuthentication();                     // Authentication
@@ -48,10 +54,9 @@ app.MapGet("/api/assessments/results", () => Results.Ok(new
     letterGrade = "A"
 })).RequireAuthorization();
 
-// EXERCISE 2: Test route to trigger the captive dependency
 app.MapGet("/api/error", () =>
 {
-    throw new Exception("Simulated database failure for ProblemDetails testing");
+    throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
 });
 
 // EXERCISE 4: Test endpoints for logging
