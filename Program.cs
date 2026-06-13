@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using TmsApi.Middleware;
+using TmsApi.Models;
+using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -9,7 +12,7 @@ builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<EnrollmentWorker>();         
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>(); 
+builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>(); 
 
 
 builder.Services.AddOptions<PaymentOptions>()
