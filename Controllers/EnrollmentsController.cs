@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.Models;
 using TmsApi.Services;
 
 namespace TmsApi.Controllers;
@@ -15,7 +14,6 @@ public class EnrollmentsController : ControllerBase
         _enrollmentService = enrollmentService;
     }
 
-    // GET /api/enrollments
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -23,7 +21,6 @@ public class EnrollmentsController : ControllerBase
         return Ok(enrollments);
     }
 
-    // GET /api/enrollments/{id}
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {
@@ -33,7 +30,6 @@ public class EnrollmentsController : ControllerBase
         return Ok(record);
     }
 
-    // POST /api/enrollments
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request)
     {
@@ -41,7 +37,6 @@ public class EnrollmentsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }
 
-    // DELETE /api/enrollments/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {

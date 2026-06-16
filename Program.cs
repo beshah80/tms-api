@@ -1,18 +1,23 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
 using Scalar.AspNetCore;
 using TmsApi.Middleware;
 using TmsApi.Models;
 using TmsApi.Services;
 
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
+builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase")));
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<EnrollmentWorker>();         
-builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>(); 
+builder.Services.AddSingleton<IEnrollmentService, TmsApi.Services.EnrollmentService>(); 
 
 
 builder.Services.AddOptions<PaymentOptions>()
