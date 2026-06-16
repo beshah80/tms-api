@@ -1,5 +1,3 @@
-using TmsApi.Models;
-
 namespace TmsApi.Services;
 
 public interface IEnrollmentService
