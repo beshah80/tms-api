@@ -9,4 +9,5 @@ public class Student
     public bool IsActive { get; set; } = true;
 
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public ICollection<Certificate> Certificates { get; set; } = new List<Certificate>();
 }
