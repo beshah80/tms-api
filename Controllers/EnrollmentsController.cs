@@ -1,48 +1,64 @@
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.Services;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
 
 namespace TmsApi.Controllers;
 
 [ApiController]
 [Route("api/enrollments")]
-public class EnrollmentsController : ControllerBase
+public class EnrollmentsController(TmsDbContext context) : ControllerBase
 {
-    private readonly IEnrollmentService _enrollmentService;
-
-    public EnrollmentsController(IEnrollmentService enrollmentService)
-    {
-        _enrollmentService = enrollmentService;
-    }
-
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var enrollments = await _enrollmentService.GetAllAsync();
+        var enrollments = await context.Enrollments.ToListAsync();
         return Ok(enrollments);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    public async Task<IActionResult> GetById(int id)
     {
-        var record = await _enrollmentService.GetByIdAsync(id);
-        if (record is null)
-            return NotFound();
-        return Ok(record);
+        var enrollment = await context.Enrollments.FindAsync(id);
+        if (enrollment is null) return NotFound();
+        return Ok(enrollment);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request)
+    public async Task<IActionResult> Create(TmsApi.Entities.Enrollment enrollment)
     {
-        var record = await _enrollmentService.EnrollAsync(request.StudentId, request.CourseCode);
-        return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+        context.Enrollments.Add(enrollment);
+        await context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetById), new { id = enrollment.Id }, enrollment);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, TmsApi.Entities.Enrollment enrollment)
+    {
+        if (id != enrollment.Id) return BadRequest();
+        
+        context.Entry(enrollment).State = EntityState.Modified;
+        
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!context.Enrollments.Any(e => e.Id == id)) return NotFound();
+            throw;
+        }
+
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _enrollmentService.DeleteAsync(id);
-        if (!deleted)
-            return NotFound();
+        var enrollment = await context.Enrollments.FindAsync(id);
+        if (enrollment is null) return NotFound();
+
+        context.Enrollments.Remove(enrollment);
+        await context.SaveChangesAsync();
         return NoContent();
     }
 }
