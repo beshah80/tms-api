@@ -13,10 +13,6 @@ public class TmsDbContext(DbContextOptions<TmsDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<TmsApi.Entities.Student>().HasKey(s => s.Id);
-        modelBuilder.Entity<TmsApi.Entities.Course>().HasKey(c => c.Id);
-        modelBuilder.Entity<TmsApi.Entities.Enrollment>().HasKey(e => e.Id);
-        modelBuilder.Entity<TmsApi.Entities.Assessment>().HasKey(a => a.Id);
-        modelBuilder.Entity<TmsApi.Entities.Certificate>().HasKey(c => c.Id);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(TmsDbContext).Assembly);
     }
 }
