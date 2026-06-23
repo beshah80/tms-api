@@ -13,12 +13,15 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.Property(e => e.Grade)
             .HasPrecision(3, 2);
 
+        // Restrict prevents accidental data loss — deleting a Course or Student with enrollments must be handled explicitly in application code
         builder.HasOne(e => e.Student)
             .WithMany(s => s.Enrollments)
-            .HasForeignKey(e => e.StudentId);
+            .HasForeignKey(e => e.StudentId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Course)
             .WithMany(c => c.Enrollments)
-            .HasForeignKey(e => e.CourseId);
+            .HasForeignKey(e => e.CourseId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
