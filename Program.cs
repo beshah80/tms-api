@@ -20,7 +20,9 @@ builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<EnrollmentWorker>();         
-builder.Services.AddSingleton<IEnrollmentService, TmsApi.Services.EnrollmentService>(); 
+builder.Services.AddScoped<IEnrollmentService, TmsApi.Services.EnrollmentService>();
+builder.Services.AddScoped<IStudentService, TmsApi.Services.StudentService>();
+builder.Services.AddScoped<ICourseService, TmsApi.Services.CourseService>();
 
 
 builder.Services.AddOptions<PaymentOptions>()
@@ -65,42 +67,6 @@ app.MapGet("/api/assessments/results", () => Results.Ok(new
 app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
-});
-
-// EXERCISE 4: Test endpoints for logging
-app.MapPost("/api/enrollments/test", async (IEnrollmentService service) =>
-{
-    Console.WriteLine("=== TESTING DUPLICATE ENROLLMENT ===");
-    
-    // First enrollment - should succeed
-    Console.WriteLine("1. First enrollment attempt...");
-    var enrollment1 = await service.EnrollAsync("S-001", "CS-101");
-    
-    // Second enrollment - should show duplicate warning
-    Console.WriteLine("2. Second enrollment attempt (same student, same course)...");
-    var enrollment2 = await service.EnrollAsync("S-001", "CS-101");
-    
-    Console.WriteLine("=== TESTING MISSING RECORDS ===");
-    
-    // Test existing record
-    Console.WriteLine("3. Looking for existing record...");
-    var found = await service.GetByIdAsync(enrollment1.Id);
-    
-    // Test missing record  
-    Console.WriteLine("4. Looking for non-existent record...");
-    var notFound = await service.GetByIdAsync("nonexistent");
-    
-    Console.WriteLine("=== TESTING DELETE ===");
-    
-    // First delete - should succeed
-    Console.WriteLine("5. First delete attempt...");
-    var deleted = await service.DeleteAsync(enrollment1.Id);
-    
-    // Second delete - should show not found warning
-    Console.WriteLine("6. Second delete attempt (already deleted)...");
-    var deletedAgain = await service.DeleteAsync(enrollment1.Id);
-    
-    return Results.Ok("Logging test completed - check console for structured logs");
 });
 
 app.MapControllers();
