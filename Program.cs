@@ -23,7 +23,7 @@ builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IEnrollmentService, TmsApi.Services.EnrollmentService>();
 builder.Services.AddScoped<IStudentService, TmsApi.Services.StudentService>();
 builder.Services.AddScoped<ICourseService, TmsApi.Services.CourseService>();
-
+builder.Services.AddScoped<ICourseService, TmsApi.Services.CourseService>();
 
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")

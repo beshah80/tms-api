@@ -23,5 +23,14 @@ public class StudentConfiguration : IEntityTypeConfiguration<TmsApi.Entities.Stu
 
         builder.Property(s => s.GPA)
             .HasPrecision(3, 2);
+
+        // Exercise 8: shadow audit column — exists in DB, invisible in the entity class
+        builder.Property<DateTime>("LastUpdated");
+
+        // Exercise 8: concurrency token — prevents two users overwriting each other
+        builder.Property(s => s.Version).IsRowVersion();
+
+        // Exercise 9: soft-delete filter — IsDeleted students hidden from all normal queries
+        builder.HasQueryFilter(s => !s.IsDeleted);
     }
 }
