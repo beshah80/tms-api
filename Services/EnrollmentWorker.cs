@@ -1,4 +1,5 @@
 using TmsApi.Services;
+using TmsApi.Entities;
 
 namespace TmsApi.Services;
 
@@ -19,7 +20,7 @@ public class EnrollmentWorker
         var enrollments = enrollmentService.GetAllAsync().Result;
         Console.WriteLine($"Processing {enrollments.Count} enrollments for scholarship recalculation");
 
-        foreach (var enrollment in enrollments)
-            Console.WriteLine($"Recalculating scholarship for student {enrollment.StudentId} in course {enrollment.CourseCode}");
+        foreach (Enrollment enrollment in enrollments)
+            Console.WriteLine($"Recalculating scholarship for student {enrollment.StudentId} in course {enrollment.CourseId}");
     }
 }
