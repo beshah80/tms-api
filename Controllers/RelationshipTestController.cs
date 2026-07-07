@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
+using TmsApi.Dtos;
 using TmsApi.Entities;
 using TmsStudent = TmsApi.Entities.Student;
 using TmsCourse = TmsApi.Entities.Course;
@@ -35,11 +36,11 @@ public class RelationshipTestController(TmsDbContext context) : ControllerBase
         {
             Code = req.Code,
             Title = req.Title,
-            Capacity = req.Capacity
+            MaxCapacity = req.MaxCapacity
         };
         context.Courses.Add(course);
         await context.SaveChangesAsync();
-        return Ok(new { course.Id, course.Code, course.Title, course.Capacity });
+        return Ok(new { course.Id, course.Code, course.Title, course.MaxCapacity });
     }
 
     // Create an enrollment — links a student to a course
@@ -139,5 +140,4 @@ public class RelationshipTestController(TmsDbContext context) : ControllerBase
 }
 
 public record CreateStudentRequest(string RegistrationNumber, string Name, decimal GPA);
-public record CreateCourseRequest(string Code, string Title, int Capacity);
 public record CreateEnrollmentRequest(int StudentId, int CourseId, decimal? Grade);

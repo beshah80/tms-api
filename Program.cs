@@ -39,14 +39,12 @@ builder.Host.UseDefaultServiceProvider(options =>
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-}
-else
-{
-    app.UseExceptionHandler();  // Production: catches exceptions → ProblemDetails JSON
 }
 
 app.UseMiddleware<RequestLoggingMiddleware>();  // must come after exception handler
@@ -90,9 +88,9 @@ using (var scope = app.Services.CreateScope())
 
         var courses = new List<TmsApi.Entities.Course>
         {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", Capacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
+            new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
+            new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+            new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
         };
         context.Courses.AddRange(courses);
         context.SaveChanges();

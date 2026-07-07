@@ -1,64 +1,38 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TmsApi.Data;
+using TmsApi.Dtos;
+using TmsApi.Services;
 
 namespace TmsApi.Controllers;
 
 [ApiController]
-[Route("api/enrollments")]
-public class EnrollmentsController(TmsDbContext context) : ControllerBase
+[Route("api/courses/{courseId:int}/enrollments")]
+public class EnrollmentsController(
+    ICourseService courseService,
+    IEnrollmentService enrollmentService) : ControllerBase
 {
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HttpGet("{id:int}", Name = nameof(GetEnrollment))]
+    public async Task<IActionResult> GetEnrollment(int courseId, int id, CancellationToken ct)
     {
-        var enrollments = await context.Enrollments.ToListAsync();
-        return Ok(enrollments);
-    }
-
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
-    {
-        var enrollment = await context.Enrollments.FindAsync(id);
-        if (enrollment is null) return NotFound();
-        return Ok(enrollment);
+        var enrollment = await enrollmentService.GetByIdAsync(courseId, id, ct);
+        return enrollment is not null ? Ok(enrollment) : NotFound();
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(TmsApi.Entities.Enrollment enrollment)
+    public async Task<IActionResult> EnrollStudent(int courseId, EnrollStudentRequest request, CancellationToken ct)
     {
-        context.Enrollments.Add(enrollment);
-        await context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = enrollment.Id }, enrollment);
-    }
+        var course = await courseService.GetByIdAsync(courseId, ct);
+        if (course is null)
+            return NotFound();
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, TmsApi.Entities.Enrollment enrollment)
-    {
-        if (id != enrollment.Id) return BadRequest();
-        
-        context.Entry(enrollment).State = EntityState.Modified;
-        
-        try
-        {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!context.Enrollments.Any(e => e.Id == id)) return NotFound();
-            throw;
-        }
+        if (course.EnrollmentCount >= course.MaxCapacity)
+            return Conflict(new ProblemDetails
+            {
+                Title = "Course is full",
+                Detail = $"Course '{course.Title}' has reached its maximum capacity of {course.MaxCapacity}.",
+                Status = StatusCodes.Status409Conflict
+            });
 
-        return NoContent();
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var enrollment = await context.Enrollments.FindAsync(id);
-        if (enrollment is null) return NotFound();
-
-        context.Enrollments.Remove(enrollment);
-        await context.SaveChangesAsync();
-        return NoContent();
+        var enrollment = await enrollmentService.CreateAsync(courseId, request, ct);
+        return CreatedAtAction(nameof(GetEnrollment), new { courseId, id = enrollment.Id }, enrollment);
     }
 }

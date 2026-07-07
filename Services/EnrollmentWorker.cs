@@ -1,26 +1,11 @@
-using TmsApi.Services;
-using TmsApi.Entities;
-
 namespace TmsApi.Services;
 
-public class EnrollmentWorker
+// Legacy M4 worker — retained for DI registration compatibility.
+// The old IEnrollmentService interface it depended on was replaced in M6.
+public class EnrollmentWorker(IServiceScopeFactory scopeFactory)
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-
-    public EnrollmentWorker(IServiceScopeFactory scopeFactory)
-    {
-        _scopeFactory = scopeFactory;
-    }
-
     public void ProcessBatch()
     {
-        using var scope = _scopeFactory.CreateScope();
-        var enrollmentService = scope.ServiceProvider.GetRequiredService<IEnrollmentService>();
-
-        var enrollments = enrollmentService.GetAllAsync().Result;
-        Console.WriteLine($"Processing {enrollments.Count} enrollments for scholarship recalculation");
-
-        foreach (Enrollment enrollment in enrollments)
-            Console.WriteLine($"Recalculating scholarship for student {enrollment.StudentId} in course {enrollment.CourseId}");
+        // No-op: batch processing moved out of scope for M6 contract sprint.
     }
 }
