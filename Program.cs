@@ -1,66 +1,117 @@
+using Asp.Versioning;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Data;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using TmsApi.Application.Behaviors;
+using TmsApi.Application.Enrollments.Commands;
+using TmsApi.Data;
+using TmsApi.ExceptionHandlers;
+using TmsApi.Filters;
 using TmsApi.Middleware;
 using TmsApi.Models;
 using TmsApi.Services;
 
-
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllers();
+
+// ── MediatR + FluentValidation ────────────────────────────────────────────────
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
+
+builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
+
+// LoggingBehavior FIRST — it must wrap ValidationBehavior
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+// ── Exception handler (before AddProblemDetails) ──────────────────────────────
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+// ── API versioning ────────────────────────────────────────────────────────────
+builder.Services.AddOpenApi("v1", options =>
+    options.ShouldInclude = d => d.GroupName == "v1");
+
+builder.Services.AddOpenApi("v2", options =>
+    options.ShouldInclude = d => d.GroupName == "v2");
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion                   = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions                   = true;
+    options.ApiVersionReader                    = new UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat           = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+// ── Controllers + global audit filter ────────────────────────────────────────
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<AuditLogFilter>();
+});
+
+// ── Database ──────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
         .LogTo(Console.WriteLine, LogLevel.Information)
         .EnableSensitiveDataLogging());
 
-builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
-
-
-builder.Services.AddSingleton<EnrollmentWorker>();         
+// ── Application services ──────────────────────────────────────────────────────
+builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IEnrollmentService, TmsApi.Services.EnrollmentService>();
-builder.Services.AddScoped<IStudentService, TmsApi.Services.StudentService>();
-builder.Services.AddScoped<ICourseService, TmsApi.Services.CourseService>();
-builder.Services.AddScoped<ICourseService, TmsApi.Services.CourseService>();
+builder.Services.AddScoped<IStudentService,    TmsApi.Services.StudentService>();
+builder.Services.AddScoped<ICourseService,     TmsApi.Services.CourseService>();
 
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")
     .ValidateDataAnnotations()
-    .ValidateOnStart(); 
-
+    .ValidateOnStart();
 
 builder.Host.UseDefaultServiceProvider(options =>
 {
-    options.ValidateScopes = true;
+    options.ValidateScopes  = true;
     options.ValidateOnBuild = true;
 });
 
+// ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
+
+// UseExceptionHandler FIRST — before any middleware that can throw
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
-}
-else
-{
-    app.UseExceptionHandler();  // Production: catches exceptions → ProblemDetails JSON
+    app.MapOpenApi("/{documentName}/openapi.json");
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("TMS API Reference")
+               .WithTheme(ScalarTheme.DeepSpace)
+               .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+               .AddDocument("v1", "API Version 1.0")
+               .AddDocument("v2", "API Version 2.0");
+    });
 }
 
-app.UseMiddleware<RequestLoggingMiddleware>();  // must come after exception handler
+// V1 deprecation headers — before MapControllers so every V1 response is stamped
+app.UseMiddleware<V1DeprecationMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 app.UseStatusCodePages();
-app.UseHttpsRedirection();                    // HTTPS redirect
-app.UseRouting();                            // Routing
-app.UseAuthentication();                     // Authentication
-app.UseAuthorization();                      // Authorization
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 
-// Map the protected endpoint
 app.MapGet("/api/assessments/results", () => Results.Ok(new
 {
-    courseCode = "CS-101",
-    studentId = "S-001", 
+    courseCode  = "CS-101",
+    studentId   = "S-001",
     letterGrade = "A"
 })).RequireAuthorization();
 
@@ -71,42 +122,11 @@ app.MapGet("/api/error", () =>
 
 app.MapControllers();
 
-// Seed test data at startup
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsDevelopment())
 {
-    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
-    context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
-    if (!context.Students.Any())
-    {
-        var students = new List<TmsApi.Entities.Student>
-        {
-            new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
-            new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
-        };
-        context.Students.AddRange(students);
-
-        var courses = new List<TmsApi.Entities.Course>
-        {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", Capacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
-        };
-        context.Courses.AddRange(courses);
-        context.SaveChanges();
-
-        var enrollments = new List<TmsApi.Entities.Enrollment>
-        {
-            new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
-            new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
-            new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
-            new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
-        };
-        context.Enrollments.AddRange(enrollments);
-        context.SaveChanges();
-    }
+    using var scope        = app.Services.CreateScope();
+    var seederContext      = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    await DataSeeder.SeedAsync(seederContext);
 }
 
 app.Run();
